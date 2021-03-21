@@ -8,7 +8,9 @@ from re import search
 class WikipediaTrace:
     def __init__(self, types, number_of_random_links):
         types = types
+        self.last_seen = {}
         number_of_random_links = number_of_random_links
+        self.max_path = 0
 
     def get_next_first_url(self, url):
         response = requests.get(url)
@@ -46,7 +48,7 @@ class WikipediaTrace:
         return next_first_url
 
     def trace_types(self):
-        for link_count in range(0, number_of_random_links):
+        for _ in range(0, number_of_random_links):
             first_url = 'https://en.wikipedia.org/wiki/Special:Random'
             last_url = 'https://en.wikipedia.org/wiki/Philosophy'
 
@@ -54,32 +56,33 @@ class WikipediaTrace:
             wiki_tree = [first_url]
             wiki_seen = set()
             step_count = 0
-            last_seen = {}
 
             while not reached:
                 next_first_url = self.get_next_first_url(wiki_tree[-1])
                 print(next_first_url)
-                link_count += 1
+                step_count += 1
                 if not next_first_url:
-                    last_seen[wiki_tree[-1]] = last_seen.get(wiki_tree[-1], 0) + 1
+                    self.last_seen[next_first_url] = self.last_seen.get(next_first_url, 0) + 1
                     types['reached dead end'] += 1
                     reached = True
                 elif next_first_url == last_url:
                     types['target reached'] += 1
+                    if step_count > self.max_path:
+                    	self.max_path = step_count
                     reached = True
-                elif link_count > 100:
-                    last_seen[next_first_url] = last_seen.get(next_first_url, 0) + 1
+                elif step_count >= 100:
+                    self.last_seen[next_first_url] = self.last_seen.get(next_first_url, 0) + 1
                     types['max steps reached'] += 1
                     reached = True
                 elif next_first_url in wiki_seen:
-                    last_seen[next_first_url] = last_seen.get(next_first_url, 0) + 1
+                    self.last_seen[next_first_url] = self.last_seen.get(next_first_url, 0) + 1
                     types['loop'] += 1
                     reached = True
                 else:
                     wiki_tree.append(next_first_url)
                     wiki_seen.add(next_first_url)
 
-        return types
+        return types, self.last_seen, self.max_path
 
 types = {'reached dead end': 0, 
          'target reached': 0, 
